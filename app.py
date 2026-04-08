@@ -74,7 +74,7 @@ if 'user' not in st.session_state:
     if lottie_edu:
         st_lottie(lottie_edu, height=300, key="login_animation")
 
-    st.title("🎓 Welcome to Ultimate Student Helper App")
+    st.title("🎓 WELCOME TO ULTIMATE STUDENT HELPER APP")
     st.write("Login or register to start predicting scores, calculating CGPA, and exploring student resources!")
 
     # Login/Register sidebar
