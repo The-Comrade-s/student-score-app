@@ -1,16 +1,20 @@
-# app_phase2.py
+# app_phase2_professional.py
 import streamlit as st
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 import sqlite3
 import hashlib
+from streamlit_lottie import st_lottie
+import requests
 
-# ================= DATABASE SETUP =================
+# ===================== CONFIG =====================
+st.set_page_config(page_title="🎓 Student Helper App", page_icon="🎯", layout="wide")
+
+# ===================== DATABASE =====================
 conn = sqlite3.connect('students.db')
 c = conn.cursor()
 
-# Users table
 c.execute('''
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +23,6 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT
 )
 ''')
-# CGPA table
 c.execute('''
 CREATE TABLE IF NOT EXISTS cgpa_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,65 +34,89 @@ CREATE TABLE IF NOT EXISTS cgpa_history (
 ''')
 conn.commit()
 
-# ================= FUNCTIONS =================
+# ===================== FUNCTIONS =====================
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def register_user(name, email, password):
     try:
-        c.execute("INSERT INTO users (name,email,password) VALUES (?,?,?)", (name,email,hash_password(password)))
+        c.execute("INSERT INTO users (name,email,password) VALUES (?,?,?)",
+                  (name,email,hash_password(password)))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
         return False
 
 def login_user(email, password):
-    c.execute("SELECT * FROM users WHERE email=? AND password=?", (email, hash_password(password)))
-    data = c.fetchone()
-    return data  # Returns user row if exists
+    c.execute("SELECT * FROM users WHERE email=? AND password=?",
+              (email, hash_password(password)))
+    return c.fetchone()
 
-# =================== APP CONFIG ===================
-st.set_page_config(page_title="🎓 Student Helper App", page_icon="🎯", layout="wide")
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
-# =================== LOGIN / REGISTER ===================
-st.sidebar.title("👤 Login/Register")
-auth_action = st.sidebar.radio("Action:", ["Login","Register"])
+# ===================== PRE-LOGIN PAGE =====================
+if 'user' not in st.session_state:
+    # Display educational animation
+    lottie_edu = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_snmohqxk.json")
+    if lottie_edu:
+        st_lottie(lottie_edu, height=300, key="login_animation")
 
-if auth_action == "Register":
-    st.sidebar.subheader("Create Account")
-    reg_name = st.sidebar.text_input("Full Name")
-    reg_email = st.sidebar.text_input("Email")
-    reg_password = st.sidebar.text_input("Password", type="password")
-    if st.sidebar.button("Register"):
-        if register_user(reg_name, reg_email, reg_password):
-            st.success("✅ Account created! Please login.")
-        else:
-            st.error("❌ Email already exists!")
+    st.title("🎓 Welcome to Ultimate Student Helper App")
+    st.write("Login or register to start predicting scores, calculating CGPA, and exploring student resources!")
 
-else:  # Login
-    st.sidebar.subheader("Login")
-    login_email = st.sidebar.text_input("Email")
-    login_password = st.sidebar.text_input("Password", type="password")
-    if st.sidebar.button("Login"):
-        user = login_user(login_email, login_password)
-        if user:
-            st.session_state.user = user
-            st.success(f"Welcome, {user[1]} 🎉")
-        else:
-            st.error("❌ Invalid email or password")
+    # Login/Register sidebar
+    st.sidebar.title("👤 Login/Register")
+    auth_action = st.sidebar.radio("Action:", ["Login","Register"])
 
-# =================== MAIN APP AFTER LOGIN ===================
+    if auth_action == "Register":
+        st.sidebar.subheader("Create Account")
+        reg_name = st.sidebar.text_input("Full Name", key="reg_name")
+        reg_email = st.sidebar.text_input("Email", key="reg_email")
+        reg_password = st.sidebar.text_input("Password", type="password", key="reg_password")
+        if st.sidebar.button("Register", key="register_btn"):
+            if register_user(reg_name, reg_email, reg_password):
+                st.success("✅ Account created! Please login.")
+            else:
+                st.error("❌ Email already exists!")
+    else:
+        st.sidebar.subheader("Login")
+        login_email = st.sidebar.text_input("Email", key="login_email")
+        login_password = st.sidebar.text_input("Password", type="password", key="login_password")
+        if st.sidebar.button("Login", key="login_btn"):
+            user = login_user(login_email, login_password)
+            if user:
+                st.session_state.user = user
+                st.experimental_rerun()  # Refresh app to hide login
+            else:
+                st.error("❌ Invalid email or password")
+
+# ===================== MAIN APP AFTER LOGIN =====================
 if 'user' in st.session_state:
     st.sidebar.title("📚 Modules")
-    module = st.sidebar.radio("Select Module:", ["Score Predictor","CGPA Calculator","Project Helper (Coming Soon)","Practice Questions (Coming Soon)","Resource Sharing (Coming Soon)"])
+    st.sidebar.success(f"Welcome, {st.session_state.user[1]} 🎉")
+    if st.sidebar.button("Logout"):
+        del st.session_state.user
+        st.experimental_rerun()
+
+    module = st.sidebar.radio("Select Module:", [
+        "Score Predictor",
+        "CGPA Calculator",
+        "Project Helper (Coming Soon)",
+        "Practice Questions (Coming Soon)",
+        "Resource Sharing (Coming Soon)"
+    ])
 
     # ---------------- SCORE PREDICTOR ----------------
     if module == "Score Predictor":
         st.title("🎯 Student Score Predictor")
         st.write("Predict your expected score based on hours studied!")
 
-        # Sample data
-        data = {'Hours_Studied':[10,20,30,40,50,60,70,80,90,120], 'Scores':[30,35,40,50,55,60,65,70,80,95]}
+        data = {'Hours_Studied':[10,20,30,40,50,60,70,80,90,120],
+                'Scores':[30,35,40,50,55,60,65,70,80,95]}
         df = pd.DataFrame(data)
         X = df[['Hours_Studied']]
         y = df['Scores']
@@ -98,11 +125,10 @@ if 'user' in st.session_state:
 
         col1, col2 = st.columns([1,1])
         with col1:
-            hours = st.slider("Select hours studied:", 0, 5, 120)
+            hours = st.slider("Select hours studied:", 0, 10, 120)
             if st.button("Predict Score"):
                 prediction = model.predict([[hours]])
                 st.success(f"🎉 Predicted Score: {prediction[0]:.2f}")
-
         with col2:
             st.subheader("📊 Performance Graph")
             plt.figure(figsize=(5,4))
@@ -119,7 +145,7 @@ if 'user' in st.session_state:
         st.write("Calculate your CGPA for University or Polytechnic!")
 
         institution = st.selectbox("Select Institution Type:", ["University","Polytechnic","College"])
-        
+
         if 'courses' not in st.session_state:
             st.session_state.courses = pd.DataFrame(columns=['Course','Unit','Score'])
 
@@ -130,9 +156,10 @@ if 'user' in st.session_state:
             course_score = st.number_input("Score/Grade:", min_value=0,max_value=100,step=1)
             if st.button("Add Course"):
                 if course_name:
-                    new_row = pd.DataFrame({'Course':[course_name],'Unit':[course_unit],'Score':[course_score]})
+                    new_row = pd.DataFrame({'Course':[course_name],
+                                            'Unit':[course_unit],
+                                            'Score':[course_score]})
                     st.session_state.courses = pd.concat([st.session_state.courses,new_row],ignore_index=True)
-                    # Save to DB
                     c.execute("INSERT INTO cgpa_history (user_id,course,unit,score) VALUES (?,?,?,?)",
                               (st.session_state.user[0], course_name, course_unit, course_score))
                     conn.commit()
@@ -145,7 +172,6 @@ if 'user' in st.session_state:
             else:
                 st.table(st.session_state.courses)
 
-        # Calculate CGPA
         def get_grade_point(score, institution):
             if institution=="University":
                 if score>=70: return 5
@@ -173,6 +199,3 @@ if 'user' in st.session_state:
     else:
         st.title(module)
         st.info("Coming Soon! Phase 2 modules (Project Helper, Practice Questions, Resource Sharing) will be implemented here.")
-
-else:
-    st.warning("Please login or register to access the app 🔐")
