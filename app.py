@@ -98,7 +98,7 @@ if 'user' in st.session_state:
 
         col1, col2 = st.columns([1,1])
         with col1:
-            hours = st.slider("Select hours studied:", 0, 12, 5)
+            hours = st.slider("Select hours studied:", 0, 5, 120)
             if st.button("Predict Score"):
                 prediction = model.predict([[hours]])
                 st.success(f"🎉 Predicted Score: {prediction[0]:.2f}")
