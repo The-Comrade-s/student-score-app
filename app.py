@@ -59,6 +59,15 @@ def load_lottieurl(url: str):
     return r.json()
 
 # ===================== PRE-LOGIN PAGE =====================
+import json
+from streamlit_lottie import st_lottie
+
+# Load your own animation JSON
+with open("Yo Animation.json", "r") as f:
+    custom_lottie = json.load(f)
+
+# Display the animation
+st_lottie(custom_lottie, height=300)
 if 'user' not in st.session_state:
     # Display educational animation
     lottie_edu = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_snmohqxk.json")
